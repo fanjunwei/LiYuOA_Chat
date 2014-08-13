@@ -18,9 +18,14 @@ var handler = Handler.prototype;
  */
 handler.enter = function(msg, session, next) {
 	var self = this;
-	var rid = msg.rid;
-	var uid = msg.username + '*' + rid
+	var type = msg.type;
+	var oid = msg.oid;
+	var uid = msg.pid + '*' + type
 	var sessionService = self.app.get('sessionService');
+
+    if(!session.uid&&sessionService.getByUid(uid)){
+        sessionService.kick(uid);
+    }
 
 	//duplicate log in
 	if( !! sessionService.getByUid(uid)) {
@@ -33,8 +38,8 @@ handler.enter = function(msg, session, next) {
 	}
 
 	session.bind(uid);
-	session.set('rid', rid);
-	session.push('rid', function(err) {
+	session.set('oid', oid);
+	session.push('oid', function(err) {
 		if(err) {
 			console.error('set rid for session service failed! error is : %j', err.stack);
 		}
@@ -42,7 +47,7 @@ handler.enter = function(msg, session, next) {
 	session.on('closed', onUserLeave.bind(null, self.app));
 
 	//put user into channel
-	self.app.rpc.chat.chatRemote.add(session, uid, self.app.get('serverId'), rid, true, function(users){
+	self.app.rpc.chat.chatRemote.add(oid, uid, self.app.get('serverId'), oid, true, function(users){
 		next(null, {
 			users:users
 		});
@@ -59,74 +64,26 @@ handler.enter = function(msg, session, next) {
  * @return {Void}
  */
 handler.listenOrg = function(msg, session, next) {
+
     var self = this;
-    var rid = msg.rid;
-    var uid = msg.username + '*' + rid
+    var dids = msg.dids;
     var sessionService = self.app.get('sessionService');
 
-    //duplicate log in
-    if( !! sessionService.getByUid(uid)) {
-        next(null, {
-            code: 500,
-            error: true,
-            message:'用户已登陆'
-        });
-        return;
-    }
-
-    session.bind(uid);
-    session.set('rid', rid);
-    session.push('rid', function(err) {
+    session.set('dids', dids);
+    session.push('dids', function(err) {
         if(err) {
             console.error('set rid for session service failed! error is : %j', err.stack);
         }
     });
-    session.on('closed', onUserLeave.bind(null, self.app));
-
-    //put user into channel
-    self.app.rpc.chat.chatRemote.add(session, uid, self.app.get('serverId'), rid, true, function(users){
-        next(null, {
-            users:users
-        });
-    });
-};
-/**
- * Send messages to users
- *
- * @param {Object} msg message from client
- * @param {Object} session
- * @param  {Function} next next stemp callback
- *
- */
-handler.send = function(msg, session, next) {
-    var rid = session.get('rid');
-    var username = session.uid.split('*')[0];
-    var channelService = this.app.get('channelService');
-    var param = {
-        route: 'onChat',
-        msg: msg.content,
-        from: username,
-        target: msg.target
-    };
-    channel = channelService.getChannel(rid, false);
-
-    //the target is all users
-    if(msg.target == '*') {
-        channel.pushMessage(param);
+    for(var i=0;i<dids.length;i++) {
+        //put user into channel
+        self.app.rpc.chat.chatRemote.add(dids[i], session.uid, self.app.get('serverId'), dids[i], true, null);
     }
-    //the target is specific user
-    else {
-        var tuid = msg.target + '*' + rid;
-        var tsid = channel.getMember(tuid)['sid'];
-        channelService.pushMessageByUids(param, [{
-            uid: tuid,
-            sid: tsid
-        }]);
-    }
-    next(null, {
-        route: msg.route
-    });
+    next(null,{
+        code:200
+    })
 };
+
 
 /**
  * User log out handler
@@ -139,5 +96,10 @@ var onUserLeave = function(app, session) {
 	if(!session || !session.uid) {
 		return;
 	}
-	app.rpc.chat.chatRemote.kick(session, session.uid, app.get('serverId'), session.get('rid'), null);
+	app.rpc.chat.chatRemote.kick(session.get('oid'), session.uid, app.get('serverId'), session.get('oid'), null);
+    var dids = session.get('dids');
+    for(var i=0;i<dids.length;i++){
+        //put user into channel
+        app.rpc.chat.chatRemote.kick(dids[i], session.uid, app.get('serverId'), dids[i], null);
+    }
 };

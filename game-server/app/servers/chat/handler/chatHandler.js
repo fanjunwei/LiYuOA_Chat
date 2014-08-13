@@ -19,31 +19,37 @@ var handler = Handler.prototype;
  *
  */
 handler.send = function(msg, session, next) {
-	var rid = session.get('rid');
-	var username = session.uid.split('*')[0];
-	var channelService = this.app.get('channelService');
-	var param = {
-		route: 'onChat',
-		msg: msg.content,
-		from: username,
-		target: msg.target
-	};
-	channel = channelService.getChannel(rid, false);
+    var oid = msg.o;
+    var type = msg.c;
+    var fid = msg.f;
+    var to = msg.t;
 
-	//the target is all users
-	if(msg.target == '*') {
-		channel.pushMessage(param);
-	}
-	//the target is specific user
-	else {
-		var tuid = msg.target + '*' + rid;
-		var tsid = channel.getMember(tuid)['sid'];
-		channelService.pushMessageByUids(param, [{
-			uid: tuid,
-			sid: tsid
-		}]);
-	}
-	next(null, {
-		route: msg.route
-	});
+
+    var channelService = this.app.get('channelService');
+    var param = {
+        route: 'onChat',
+        msg: msg
+    };
+    channel = channelService.getChannel(oid, false);
+
+    //the target is all users
+    if(!!channel) {
+        if(to){
+            tuid = [];
+            for(var i=0;i<app.get('clientType');i++){
+                var r = channel.getMember(to+'*'+app.get('clientType')[i]);
+                if(r){
+                    tuid.push(r);
+                }
+            }
+            channelService.pushMessageByUids(param, tuid);
+        }else{
+            channel.pushMessage(param);
+        }
+
+    }
+
+    next(null, {
+        code:200
+    });
 };
