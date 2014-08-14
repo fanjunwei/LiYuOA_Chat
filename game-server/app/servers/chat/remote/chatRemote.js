@@ -24,7 +24,10 @@ ChatRemote.prototype.add = function(uid, sid, name, flag, cb) {
             s:'on',
             p: uid
         };
-
+        var old = channel.getMember(uid);
+        if(!!old){
+           channel.leave(old.uid,old.sid)
+        }
         channel.add(uid, sid);
         if(typeof name == 'string'){
             channel.pushMessage(param);
@@ -84,5 +87,47 @@ ChatRemote.prototype.kick = function(uid, sid, name,cb) {
             channel.pushMessage(param);
         }
 	}
+    cb(null);
+};
+
+
+
+/**
+ * Send messages to users
+ *
+ * @param {Object} msg message from client
+ * @param {Object} session
+ * @param  {Function} next next stemp callback
+ *
+ */
+ChatRemote.prototype.sendSys = function(oid, msg, cb) {
+    var oid = msg.o;
+    var to = msg.t;
+//    var m = msg.msg;
+//    var type = msg.type;
+
+
+    var channelService = this.app.get('channelService');
+    var param = {
+        route: 'sys',
+        msg: msg
+    };
+    channel = channelService.getChannel(oid, false);
+
+    //the target is all users
+    if(!!channel) {
+        if(to){
+            tuid = [];
+            for(var i=0;i<app.get('clientType');i++){
+                var r = channel.getMember(to+'*'+app.get('clientType')[i]);
+                if(r){
+                    tuid.push(r);
+                }
+            }
+            channelService.pushMessageByUids(param, tuid);
+        }else{
+            channel.pushMessage(param);
+        }
+    }
     cb(null);
 };

@@ -8,6 +8,7 @@ app.set('clientType', ['flex','air','andro','iphon']);
 
 // app.js
 var crossdomain = require('./app/components/crossdomain');
+var httpapi = require('./app/components/httpApi');
 
 // app configure
 app.configure('production|development','connector', function() {
@@ -44,6 +45,7 @@ app.configure('production|development','gate', function() {
     });
 
     app.load(crossdomain, {interval: 5000});
+    app.load(httpapi, {port: 3001});
 
     app.set('errorHandler', function (err, msg, resp, session, next) {
         console.log(err, msg, resp, session);
