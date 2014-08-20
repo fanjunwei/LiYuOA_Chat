@@ -5,29 +5,30 @@
 var pomelo = require('pomelo');
 //var async = require('async');
 var utils = require('../util/utils');
-var BinaryParser = require('./mongoDB/binary_parser').BinaryParser;
-
+var mongodb = require("mongodb");
 var userDao = module.exports;
 
 userDao.onlineUser = function(username,uid,sid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Users").findOne({uid:uid},function(err,user){
-            utils.invokeCallback(cb, err, user);
-
-            if(!user){
+//        db.collection("Users").remove(function(err,res){
+//            console.error(res);
+//        });
+//        db.collection("Chat").remove(function(){
+//
+//        });
+        db.collection("Users").update({uid:uid}, {$set:{sid:sid,online:true}}, {safe:true},function(err,res){
+            if(res==0){
                 db.collection("Users").insert({username:username,uid:uid,sid:sid,online:true},{safe:true},function(err,res){
-                    console.error(err);
                     console.error(res);
+                    cleanUp();
+                    utils.invokeCallback(cb, err, null);
                 });
             }else{
-                db.collection("Users").update({uid:uid}, {$set:{sid:sid,online:true}}, {safe:true},function(err,res){
-                    console.error(err);
-                    console.error(res);
-                });
+                cleanUp();
+                utils.invokeCallback(cb, err, null);
             }
-            cleanUp();
-
         });
+
     });
 }
 
@@ -38,6 +39,7 @@ userDao.offlineUser = function(uid,cb){
             console.error(res);
         });
         cleanUp();
+        utils.invokeCallback(cb, null, null);
     });
 }
 //
@@ -64,9 +66,9 @@ userDao.addListenOrg = function(username,channels,cb){
                     console.error(res);
                 });
             }
+            utils.invokeCallback(cb, err);
         })
         cleanUp();
-        utils.invokeCallback(cb, null);
     });
 }
 
@@ -78,7 +80,7 @@ userDao.removeListenOrg = function(username,channels,cb){
             console.error(res);
         })
         cleanUp();
-        utils.invokeCallback(cb, null);
+        utils.invokeCallback(cb, err);
     });
 }
 
@@ -93,7 +95,8 @@ userDao.findUsersByOrg = function(channel,cb){
             }
             if(usernames.length==0){
                 cleanUp();
-                utils.invokeCallback(cb, usernames);
+                utils.invokeCallback(cb, err,usernames);
+                return;
             }
             db.collection("Users").find({username:{$in:usernames},online:true}).toArray(function(err,users){
 
@@ -102,7 +105,7 @@ userDao.findUsersByOrg = function(channel,cb){
                     onlines.push({uid:users[i].uid,sid:users[i].sid});
                 }
                 cleanUp();
-                utils.invokeCallback(cb, onlines);
+                utils.invokeCallback(cb, err,onlines);
             });
         })
     });
@@ -117,7 +120,7 @@ userDao.findUsersByUsername = function(username,cb){
                 onlines.push({uid:users[i].uid,sid:users[i].sid});
             }
             cleanUp();
-            utils.invokeCallback(cb, onlines);
+            utils.invokeCallback(cb, err,onlines);
         });
     });
 }
@@ -133,18 +136,20 @@ userDao.insertChat = function(chat,cb){
     });
 }
 
-userDao.queryChatByOrg = function(channel,timeline,start,limit,cb){
+userDao.queryChatByOrg = function(channel,timeline,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         if(timeline==null){
-            timeline = parseInt(timeline/1000,10);
-            timeline=BinaryParser.encodeInt(timeline, 32, true, true);
-        }else{
-            timeline=timeline.substr(0,4);
+//            timeline = parseInt(Date.now()/1000,10);
+            timeline = String(parseInt(Date.now()/1000,10));
         }
-            db.collection("Chat").find({_id:{$gt:timeline},channel:channel},{sort:["_id","desc"],limit:30}).toArray(function(err,chats){
-                cleanUp();
-                utils.invokeCallback(cb, chats);
-            })
+        timeline = timeline.substr(0,10);
+//        timeline = parseInt(timeline);
+
+        db.collection("Chat").find({_id:{$lt:timeline},channel:channel},{sort:{"_id":-1},limit:30}).toArray(function(err,chats){
+            cleanUp();
+            chats.reverse();
+            utils.invokeCallback(cb, err,chats);
+        })
     });
 }
 //

@@ -8,6 +8,7 @@ var Handler = function(app) {
 
 var handler = Handler.prototype;
 var userDao = require('../../../dao/userDao');
+var mongodb = require("mongodb");
 //
 //var Db = require('mongodb').Db;
 //var Server = require('mongodb').Server;
@@ -60,12 +61,19 @@ handler.enter = function(msg, session, next) {
 
     userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
         userDao.findUsersByOrg(oid,function(err,users){
+            if(err){
+                next(null,{
+                    code:500
+                })
+                return;
+            }
             u=[];
             if(users){
                 for(var i=0;i<users.length;i++){
                     u.push(users[i].uid);
                 }
             }
+            console.error("enter");
             next(null, {
                 users:u
             });
@@ -100,14 +108,22 @@ handler.listenOrg = function(msg, session, next) {
 //            console.error('set rid for session service failed! error is : %j', err.stack);
 //        }
 //    });
-    userDao.addListenOrg(session.uid.split("*")[0],dids,null);
+    userDao.addListenOrg(parseInt(session.uid.split("*")[0]),dids,function(err,res){
+        if(err){
+            next(null,{
+                code:500
+            })
+            return;
+        }
+        next(null,{
+            code:200
+        });
+    });
 //    for(var i=0;i<dids.length;i++) {
 //        //put user into channel
 //        self.app.rpc.chat.chatRemote.add(dids[i], session.uid, self.app.get('serverId'), dids[i], true, null);
 //    }
-    next(null,{
-        code:200
-    })
+
 };
 
 
@@ -137,6 +153,9 @@ handler.send = function(msg, session, next) {
     var type = msg.c;
     var fid = msg.f;
     var to = msg.t;
+    msg._id=parseInt(Date.now()/1000,10)+msg.id;
+    delete msg.id;
+    delete msg.__route__;
 
 
     var channelService = this.app.get('channelService');
@@ -144,15 +163,34 @@ handler.send = function(msg, session, next) {
         route: 'onChat',
         msg: msg
     };
+//    console.error(msg);
 //    channel = channelService.getChannel(oid, false);
     userDao.insertChat(msg,null);
     if(to){
         userDao.findUsersByUsername(to,function(err,users){
+            if(err){
+                next(null,{
+                    code:500
+                })
+                return;
+            }
             channelService.pushMessageByUids(param, users);
+            next(null, {
+                code:200
+            });
         })
     }else{
         userDao.findUsersByOrg(channel,function(err,users){
+            if(err){
+                next(null,{
+                    code:500
+                })
+                return;
+            }
             channelService.pushMessageByUids(param, users);
+            next(null, {
+                code:200
+            });
         })
     }
 //    //the target is all users
@@ -172,7 +210,25 @@ handler.send = function(msg, session, next) {
 //
 //    }
 
-    next(null, {
-        code:200
-    });
+
+};
+
+
+handler.history = function(msg, session, next) {
+    var channel = msg.channel;
+    var id = msg.id;
+
+//    console.error(msg);
+    userDao.queryChatByOrg(channel,id,function(err,chats){
+        if(err){
+            next(null,{
+                code:500
+            })
+            return;
+        }
+        next(null, {
+            code:200,
+            chats:chats
+        });
+    })
 };
