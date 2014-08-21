@@ -1,0 +1,9 @@
+{
+    "development": {
+    "url" : "mongodb://54.238.173.94:27117/LiYu_Chat"
+},
+
+    "production": {
+    "url" : "mongodb://127.0.0.1/FootBallX"
+}
+}

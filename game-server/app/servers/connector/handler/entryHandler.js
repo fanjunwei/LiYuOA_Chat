@@ -103,7 +103,7 @@ handler.enter = function(msg, session, next) {
  */
 handler.listenOrg = function(msg, session, next) {
 
-    var self = this;
+//    var self = this;
     var dids = msg.dids;
 //    var sessionService = self.app.get('sessionService');
 
@@ -140,12 +140,9 @@ handler.listenOrg = function(msg, session, next) {
  * @param  {Function} next    next stemp callback
  * @return {Void}
  */
-handler.regChannel = function(msg, session, next) {
+handler.createChannel = function(msg, session, next) {
 
-    var self = this;
-    var dids = msg.dids;
-
-    userDao.addListenOrg(parseInt(session.uid.split("*")[0]),dids,function(err,res){
+    userDao.createOrg(msg.users,msg.channel,msg.name,function(err){
         if(err){
             next(null,{
                 code:500
