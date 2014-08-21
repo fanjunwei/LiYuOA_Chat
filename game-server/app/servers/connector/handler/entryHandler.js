@@ -60,24 +60,29 @@ handler.enter = function(msg, session, next) {
 	session.on('closed', onUserLeave.bind(null, self.app));
 
     userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
-        userDao.findUsersByOrg(oid,function(err,users){
-            if(err){
-                next(null,{
-                    code:500
-                })
-                return;
-            }
-            u=[];
-            if(users){
-                for(var i=0;i<users.length;i++){
-                    u.push(users[i].uid);
-                }
-            }
-            console.error("enter");
-            next(null, {
-                users:u
+        userDao.findChannelByUser(msg.pid,function(err,users){
+            next(null,{
+                channels:users
             });
         })
+//        userDao.findUsersByOrg(oid,function(err,users){
+//            if(err){
+//                next(null,{
+//                    code:500
+//                })
+//                return;
+//            }
+//            u=[];
+//            if(users){
+//                for(var i=0;i<users.length;i++){
+//                    u.push(users[i].uid);
+//                }
+//            }
+//            console.error("enter");
+//            next(null, {
+//                users:u
+//            });
+//        });
     })
 	//put user into channel
 //	self.app.rpc.chat.chatRemote.add(oid, uid, self.app.get('serverId'), oid, true, function(users){
@@ -123,6 +128,35 @@ handler.listenOrg = function(msg, session, next) {
 //        //put user into channel
 //        self.app.rpc.chat.chatRemote.add(dids[i], session.uid, self.app.get('serverId'), dids[i], true, null);
 //    }
+
+};
+
+
+/**
+ * New client entry chat server.
+ *
+ * @param  {Object}   msg     request message
+ * @param  {Object}   session current session object
+ * @param  {Function} next    next stemp callback
+ * @return {Void}
+ */
+handler.regChannel = function(msg, session, next) {
+
+    var self = this;
+    var dids = msg.dids;
+
+    userDao.addListenOrg(parseInt(session.uid.split("*")[0]),dids,function(err,res){
+        if(err){
+            next(null,{
+                code:500
+            })
+            return;
+        }
+        next(null,{
+            code:200
+        });
+    });
+
 
 };
 
