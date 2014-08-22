@@ -1,6 +1,6 @@
 {
     "development": {
-    "url" : "mongodb://54.238.173.94:27117/LiYu_Chat"
+    "url" : "mongodb://192.168.101.4:27017/liyu_chat"
 },
 
     "production": {

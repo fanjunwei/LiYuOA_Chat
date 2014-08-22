@@ -37,59 +37,41 @@ handler.enter = function(msg, session, next) {
 	var sessionService = self.app.get('sessionService');
 
     if(!session.uid&&sessionService.getByUid(uid)){
-        sessionService.kick(uid);
-    }
-
-	//duplicate log in
-	if( !! sessionService.getByUid(uid)) {
-		next(null, {
-			code: 500,
-			error: true,
-            message:'用户已登陆'
-		});
-		return;
-	}
-
-	session.bind(uid);
-//	session.set('oid', oid);
-//	session.push('oid', function(err) {
-//		if(err) {
-//			console.error('set rid for session service failed! error is : %j', err.stack);
-//		}
-//	});
-	session.on('closed', onUserLeave.bind(null, self.app));
-
-    userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
-        userDao.findChannelByUser(msg.pid,function(err,users){
-            next(null,{
-                channels:users
+        userDao.findUsersByUid(uid,function(err,users){
+            var channelService = self.app.get('channelService');
+            var param = {
+                route: 'loginOther',
+                msg: {message:'你的账号已经在别处登录。如果不是本人的操作，请重新登录，修改密码。'}
+            };
+            channelService.pushMessageByUids(param, users);
+            sessionService.kick(uid);
+            //
+            session.bind(uid);
+            session.on('closed', onUserLeave.bind(null, self.app));
+            userDao.joinChanel(oid,msg.pid);
+            userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
+                userDao.findChannelByUser(msg.pid,function(err,users){
+                    next(null,{
+                        channels:users
+                    });
+                })
             });
         })
-//        userDao.findUsersByOrg(oid,function(err,users){
-//            if(err){
-//                next(null,{
-//                    code:500
-//                })
-//                return;
-//            }
-//            u=[];
-//            if(users){
-//                for(var i=0;i<users.length;i++){
-//                    u.push(users[i].uid);
-//                }
-//            }
-//            console.error("enter");
-//            next(null, {
-//                users:u
-//            });
-//        });
-    })
-	//put user into channel
-//	self.app.rpc.chat.chatRemote.add(oid, uid, self.app.get('serverId'), oid, true, function(users){
-//		next(null, {
-//			users:users
-//		});
-//	});
+    }else{
+        session.bind(uid);
+        session.on('closed', onUserLeave.bind(null, self.app));
+        userDao.joinChanel(oid,msg.pid);
+        userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
+            userDao.findChannelByUser(msg.pid,function(err,users){
+                next(null,{
+                    channels:users
+                });
+            })
+        });
+    }
+
+
+
 };
 
 
@@ -170,6 +152,9 @@ var onUserLeave = function(app, session) {
 		return;
 	}
     userDao.offlineUser(session.uid,null);
+
+
+
 //	app.rpc.chat.chatRemote.kick(session.get('oid'), session.uid, app.get('serverId'), session.get('oid'), null);
 //    var dids = session.get('dids');
 //    for(var i=0;i<dids.length;i++){
@@ -181,9 +166,9 @@ var onUserLeave = function(app, session) {
 
 handler.send = function(msg, session, next) {
     var channel = msg.channel;
-    var type = msg.c;
-    var fid = msg.f;
-    var to = msg.t;
+//    var type = msg.c;
+//    var fid = msg.f;
+//    var to = msg.t;
     msg._id=parseInt(Date.now()/1000,10)+msg.id;
     delete msg.id;
     delete msg.__route__;
@@ -197,20 +182,20 @@ handler.send = function(msg, session, next) {
 //    console.error(msg);
 //    channel = channelService.getChannel(oid, false);
     userDao.insertChat(msg,null);
-    if(to){
-        userDao.findUsersByUsername(to,function(err,users){
-            if(err){
-                next(null,{
-                    code:500
-                })
-                return;
-            }
-            channelService.pushMessageByUids(param, users);
-            next(null, {
-                code:200
-            });
-        })
-    }else{
+//    if(to){
+//        userDao.findUsersByUsername([to],function(err,users){
+//            if(err){
+//                next(null,{
+//                    code:500
+//                })
+//                return;
+//            }
+//            channelService.pushMessageByUids(param, users);
+//            next(null, {
+//                code:200
+//            });
+//        })
+//    }else{
         userDao.findUsersByOrg(channel,function(err,users){
             if(err){
                 next(null,{
@@ -223,7 +208,7 @@ handler.send = function(msg, session, next) {
                 code:200
             });
         })
-    }
+//    }
 //    //the target is all users
 //    if(!!channel) {
 //        if(to){

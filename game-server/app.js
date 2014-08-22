@@ -16,7 +16,7 @@ app.loadConfig('mongoDBConfig', app.getBase() + '/config/mongoDB.json');
 // app configure
 app.configure('production|development','connector', function() {
     // route configures
-    app.route('chat', routeUtil.chat);
+//    app.route('chat', routeUtil.chat);
 
     var dbclient = require('./app/dao/mongoDB/mongoDB').init(app);
     app.set('dbclient', dbclient);
@@ -40,8 +40,9 @@ app.configure('production|development','connector', function() {
 // app configure
 app.configure('production|development','gate', function() {
     // route configures
-    app.route('chat', routeUtil.chat);
-
+//    app.route('chat', routeUtil.chat);
+    var dbclient = require('./app/dao/mongoDB/mongoDB').init(app);
+    app.set('dbclient', dbclient);
     // filter configures
     app.filter(pomelo.timeout());
     app.set('connectorConfig', {
