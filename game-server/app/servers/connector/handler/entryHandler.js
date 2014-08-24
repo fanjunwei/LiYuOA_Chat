@@ -48,30 +48,31 @@ handler.enter = function(msg, session, next) {
             //
             session.bind(uid);
             session.on('closed', onUserLeave.bind(null, self.app));
-            userDao.joinChanel(oid,msg.pid);
-            userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
-                userDao.findChannelByUser(msg.pid,function(err,users){
-                    next(null,{
-                        channels:users
-                    });
-                })
-            });
-        })
-    }else{
-        session.bind(uid);
-        session.on('closed', onUserLeave.bind(null, self.app));
-        userDao.joinChanel(oid,msg.pid);
-        userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
             userDao.findChannelByUser(msg.pid,function(err,users){
                 next(null,{
                     channels:users
                 });
             })
+            userDao.joinChanel(oid,msg.pid);
+            userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
+
+            });
+
+        })
+    }else{
+        session.bind(uid);
+        session.on('closed', onUserLeave.bind(null, self.app));
+        userDao.findChannelByUser(msg.pid,function(err,users){
+            next(null,{
+                channels:users
+            });
+        })
+        userDao.joinChanel(oid,msg.pid);
+        userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
+
         });
+
     }
-
-
-
 };
 
 
@@ -123,20 +124,58 @@ handler.listenOrg = function(msg, session, next) {
  * @return {Void}
  */
 handler.createChannel = function(msg, session, next) {
-
-    userDao.createOrg(msg.users,msg.channel,msg.name,function(err){
+    var channelService = this.app.get('channelService');
+    userDao.createOrg(msg.users,msg.channel,msg.name,function(err, org, users){
         if(err){
             next(null,{
                 code:500
             })
             return;
         }
+        if(!err&&org){
+            userDao.findOnlineByUsername(users,function(err2,onlines){
+                var param = {
+                    route: 'createChannel',
+                    group:org
+                };
+                channelService.pushMessageByUids(param, onlines);
+            })
+        }
         next(null,{
             code:200
         });
     });
+};
 
 
+handler.quiteChannel = function(msg, session, next) {
+    var channelService = this.app.get('channelService');
+    //todo:实现一次退出多个用户，推送通知信息
+    userDao.quiteChanel(msg.channel,msg.pids,function(err, num){
+        if(err){
+            next(null,{
+                code:500
+            })
+            return;
+        }
+        if(!err&&num>0){
+            var users=[];
+            var d=parseInt(Date.now()/1000,10);
+            for(var i=0;i<msg.pids.length;i++){
+                users.push({pid:pids[i]})
+            }
+            userDao.findOnlineByUsername(users,function(err2,onlines){
+                var param = {
+                    route: 'quiteChannel',
+                    group:org
+                };
+                channelService.pushMessageByUids(param, onlines);
+            })
+        }
+        next(null,{
+            code:200
+        });
+    });
 };
 
 
@@ -163,6 +202,35 @@ var onUserLeave = function(app, session) {
 //    }
 };
 
+handler.unreadcount = function(msg, session, next){
+    var channelService = this.app.get('channelService');
+    var self=this;
+    var num=msg.channels.length;
+    for(var i=0;i<msg.channels.length;i++){
+        userDao.countByTimeline(msg.channels[i].channel,msg.channels[i].timeline,function(err,channel,count){
+            num-=1;
+            var param = {
+                route: 'channelCount',
+                channel: channel,
+                num:num,
+                count:count
+            };
+            channelService.pushMessageByUids(param, [{uid:session.uid,sid:self.app.get("serverId")}]);
+        });
+    }
+    next(null,{
+        code:200
+    });
+}
+
+
+handler.updatetimeline = function(msg, session, next){
+
+    userDao.updateTimeline(msg.channel,msg.pid);
+    next(null,{
+        code:200
+    });
+}
 
 handler.send = function(msg, session, next) {
     var channel = msg.channel;

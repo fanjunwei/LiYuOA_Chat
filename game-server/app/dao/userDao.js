@@ -44,6 +44,20 @@ userDao.offlineUser = function(uid,cb){
     });
 }
 
+
+userDao.updateChanelByUser = function(channel,pid){
+    pomelo.app.get("dbclient").do(function(db,cleanUp){
+            db.collection("Channel").update({_id:channel,"users.pid":pid},{$set:{"users.$.timeline":parseInt(Date.now()/1000,10)}},{safe:true},function(err,num){
+                if(num==0){
+                    console.error("remove _id:"+num);
+                }
+                cleanUp();
+            });
+
+    });
+}
+
+
 userDao.joinChanel = function(channel,pid){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").update({_id:channel},{$push:{"users":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,num){
@@ -63,36 +77,16 @@ userDao.joinChanel = function(channel,pid){
 }
 
 
-userDao.quiteChanel = function(channel,pid,uinfo){
-    pomelo.app.get("dbclient").do(function(db,cleanUp){
-        if(uinfo){
-            db.collection("Channel").update({_id:channel,"users.pid":pid},{$pop:{"users":uinfo}},{safe:true},function(err,num){
-                if(num==0){
-                    console.error("remove _id:"+num);
-                }
-                cleanUp();
-            });
-        }else{
-            db.collection("Channel").findOne({_id:channel,"users.pid":pid},function(err,org){
-                if(org){
-                    for(var i=0;i<org.users.length;i++){
-                        if(pid==org.users[i].pid){
-                            db.collection("Channel").update({_id:channel,"users.pid":pid},{$pop:{"users":org.users[i]}},{safe:true},function(err,num){
-                                if(num==0){
-                                    console.error("remove _id:"+num);
-                                }
-                                cleanUp();
-                            });
-                            break;
-                        }
-                    }
-                }else{
-                    cleanUp();
-                }
-            });
-        }
-
-    });
+userDao.quiteChanel = function(channel,pid,cb){
+    pomelo.app.get("dbclient").do(function(db,cleanUp) {
+        db.collection("Channel").update({_id: channel, "users.pid": pid}, {$pull: {"users": {pid: pid}}}, {safe: true}, function (err, num) {
+            if (num == 0) {
+                console.error("remove _id:" + num);
+            }
+            cleanUp();
+            utils.invokeCallback(cb, err,num);
+        });
+    })
 }
 
 userDao.addListenOrg = function(pid,channels,cb){
@@ -130,7 +124,7 @@ userDao.addListenOrg = function(pid,channels,cb){
 //                        console.error(res[k]._id);
                         for(var m=0;m<res[k].users.length;m++){
                             if(res[k].users[m].pid==pid){
-                                userDao.quiteChanel(res[k]._id,pid,res[k].users[m]);
+                                userDao.quiteChanel(res[k]._id,pid);
                             }
 
                         }
@@ -160,24 +154,22 @@ userDao.addListenOrg = function(pid,channels,cb){
 userDao.createOrg = function(pids,channel,name,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org){
-
             if(!org){
                 var users=[];
                 var d=parseInt(Date.now()/1000,10);
                 for(var i=0;i<pids.length;i++){
                     users.push({pid:pids[i],timeline:d})
                 }
+                org = {members:users,name:name,channel:channel};
                 db.collection("Channel").insert({users:users,name:name,_id:channel},{safe:true},function(err,res){
                     cleanUp();
+                    utils.invokeCallback(cb, err,org,users);
                 })
             }else{
                 cleanUp();
+                utils.invokeCallback(cb, err,null);
             }
-            utils.invokeCallback(cb, err);
-
         })
-
-
     });
 }
 
@@ -227,7 +219,7 @@ userDao.findChannelByUser = function(pid,cb){
                 for(var i=0;i<channels.length;i++){
                     for(var j=0;j<channels[i].users.length;j++){
                         if(channels[i].users[j].pid==pid){
-                            usernames.push({channel:channels[i]._id,timeline:channels[i].users[j].timeline,name:channels[i].name,members:channels});
+                            usernames.push({channel:channels[i]._id,timeline:channels[i].users[j].timeline,name:channels[i].name,members:channels[i].users});
                             break;
                         }
                     }
@@ -287,7 +279,7 @@ userDao.findUsersByOrg = function(channel,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org){
             cleanUp();
-            if(org&&org.users.length==0){
+            if(!org||org.users.length==0){
                 utils.invokeCallback(cb, err,[]);
                 return;
             }
@@ -336,6 +328,27 @@ userDao.insertChat = function(chat,cb){
     });
 }
 
+
+userDao.updateTimeline = function(channel,pid){
+    pomelo.app.get("dbclient").do(function(db,cleanUp){
+        db.collection("Channel").update({_id: channel, "users.pid": pid}, {$set: {"users.$.timeline": parseInt(Date.now()/1000,10)}}, function (err, num) {
+            if (num == 0) {
+                console.error("remove _id:" + num);
+            }
+            cleanUp();
+        });
+    });
+}
+
+userDao.countByTimeline = function(channel,timeline,cb){
+    pomelo.app.get("dbclient").do(function(db,cleanUp){
+        db.collection("Chat").count({_id:{$gt:timeline},channel:channel},function(err,count) {
+            cleanUp();
+            utils.invokeCallback(cb, err, channel, count);
+        });
+    });
+}
+
 userDao.queryChatByOrg = function(channel,timeline,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         if(timeline==null){
@@ -353,6 +366,19 @@ userDao.queryChatByOrg = function(channel,timeline,cb){
             utils.invokeCallback(cb, err,chats);
         })
     });
+}
+
+
+userDao.printChannelUsers = function(channel){
+    pomelo.app.get("dbclient").do(function(db,cleanUp) {
+        db.collection("Channel").findOne({_id: channel}, function (err, org) {
+            console.error("channel:"+org._id);
+            for(var i=0;i<org.users.length;i++){
+                console.error("users:"+org.users[i].pid);
+            }
+            cleanUp();
+        });
+    })
 }
 //
 //userDao.getUserInfo = function (username, cb) {

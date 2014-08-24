@@ -75,14 +75,20 @@ HttpApi.prototype.start = function(cb) {
             }
             if(msg.channel&&msg.to){
                 if(msg.do=='join'){
+                    userDao.printChannelUsers(msg.channel);
                     for(var k=0;k<msg.to.length;k++){
                         userDao.joinChanel(msg.channel,msg.to[k]);
                     }
+                    userDao.printChannelUsers(msg.channel);
                 }
                 if(msg.do=='remove'){
+                    userDao.printChannelUsers(msg.channel);
                     for(var k=0;k<msg.to.length;k++){
-                        userDao.quiteChanel(msg.channel,msg.to[k]);
+                        userDao.quiteChanel(msg.channel,msg.to[k],function(err0,num0){
+
+                        });
                     }
+                    userDao.printChannelUsers(msg.channel);
                 }
             }
 
