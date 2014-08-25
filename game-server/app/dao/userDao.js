@@ -58,19 +58,21 @@ userDao.updateChanelByUser = function(channel,pid){
 }
 
 
-userDao.joinChanel = function(channel,pid){
+userDao.joinChanel = function(channel,pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").update({_id:channel},{$push:{"users":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,num){
             if(num==0){
-                db.collection("Channel").insert({_id:channel,users:[{pid:pid,timeline:parseInt(Date.now()/1000,10)}]},{safe:true},function(err,res){
-                    if(err){
-                        console.error(res);
+                db.collection("Channel").insert({_id:channel,users:[{pid:pid,timeline:parseInt(Date.now()/1000,10)}]},{safe:true},function(err2,res2){
+                    if(err2){
+                        console.error(res2);
                     }
 
                     cleanUp();
+                    utils.invokeCallback(cb, err2,res2);
                 })
             }else{
                 cleanUp();
+                utils.invokeCallback(cb, err,null);
             }
         })
     });
@@ -151,7 +153,7 @@ userDao.addListenOrg = function(pid,channels,cb){
     });
 }
 
-userDao.createOrg = function(pids,channel,name,cb){
+userDao.createOrg = function(pids,channel,name,author,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org){
             if(!org){
@@ -160,8 +162,8 @@ userDao.createOrg = function(pids,channel,name,cb){
                 for(var i=0;i<pids.length;i++){
                     users.push({pid:pids[i],timeline:d})
                 }
-                org = {members:users,name:name,channel:channel};
-                db.collection("Channel").insert({users:users,name:name,_id:channel},{safe:true},function(err,res){
+                org = {members:users,name:name,channel:channel,author:author};
+                db.collection("Channel").insert({users:users,name:name,_id:channel,author:author},{safe:true},function(err,res){
                     cleanUp();
                     utils.invokeCallback(cb, err,org,users);
                 })
@@ -219,7 +221,7 @@ userDao.findChannelByUser = function(pid,cb){
                 for(var i=0;i<channels.length;i++){
                     for(var j=0;j<channels[i].users.length;j++){
                         if(channels[i].users[j].pid==pid){
-                            usernames.push({channel:channels[i]._id,timeline:channels[i].users[j].timeline,name:channels[i].name,members:channels[i].users});
+                            usernames.push({channel:channels[i]._id,timeline:channels[i].users[j].timeline,name:channels[i].name,members:channels[i].users,author:channels[i].author});
                             break;
                         }
                     }

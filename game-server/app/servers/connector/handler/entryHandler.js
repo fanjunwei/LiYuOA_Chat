@@ -125,7 +125,7 @@ handler.listenOrg = function(msg, session, next) {
  */
 handler.createChannel = function(msg, session, next) {
     var channelService = this.app.get('channelService');
-    userDao.createOrg(msg.users,msg.channel,msg.name,function(err, org, users){
+    userDao.createOrg(msg.users,msg.channel,msg.name,msg.author,function(err, org, users){
         if(err){
             next(null,{
                 code:500
@@ -150,8 +150,7 @@ handler.createChannel = function(msg, session, next) {
 
 handler.quiteChannel = function(msg, session, next) {
     var channelService = this.app.get('channelService');
-    //todo:实现一次退出多个用户，推送通知信息
-    userDao.quiteChanel(msg.channel,msg.pids,function(err, num){
+    userDao.quiteChanel(msg.channel,msg.pid,function(err, num){
         if(err){
             next(null,{
                 code:500
@@ -160,16 +159,21 @@ handler.quiteChannel = function(msg, session, next) {
         }
         if(!err&&num>0){
             var users=[];
-            var d=parseInt(Date.now()/1000,10);
-            for(var i=0;i<msg.pids.length;i++){
-                users.push({pid:pids[i]})
-            }
+            users.push({pid:msg.pid})
             userDao.findOnlineByUsername(users,function(err2,onlines){
                 var param = {
-                    route: 'quiteChannel',
-                    group:org
+                    route: 'removeChannel',
+                    channel:msg.channel
                 };
                 channelService.pushMessageByUids(param, onlines);
+            })
+            userDao.findUsersByOrg(msg.channel,function(err3,onlines){
+                var param2 = {
+                    route: 'quiteChannel',
+                    pid:msg.pid,
+                    channel:msg.channel
+                };
+                channelService.pushMessageByUids(param2, onlines);
             })
         }
         next(null,{
@@ -178,6 +182,31 @@ handler.quiteChannel = function(msg, session, next) {
     });
 };
 
+
+handler.joinChannel = function(msg, session, next) {
+    var channelService = this.app.get('channelService');
+    userDao.joinChanel(msg.channel,msg.pid,function(err, res){
+        if(err){
+            next(null,{
+                code:500
+            })
+            return;
+        }
+        if(!err&&res){
+            userDao.findUsersByOrg(msg.channel,function(err3,onlines){
+                var param2 = {
+                    route: 'joinChannel',
+                    pid:msg.pid,
+                    channel:msg.channel
+                };
+                channelService.pushMessageByUids(param2, onlines);
+            })
+        }
+        next(null,{
+            code:200
+        });
+    });
+};
 
 /**
  * User log out handler
