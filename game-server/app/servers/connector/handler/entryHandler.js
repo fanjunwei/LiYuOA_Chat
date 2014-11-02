@@ -48,13 +48,13 @@ handler.enter = function(msg, session, next) {
             //
             session.bind(uid);
             session.on('closed', onUserLeave.bind(null, self.app));
-            userDao.findChannelByUser(msg.pid,function(err,users){
+            userDao.findChannelByUser(msg.pid,function(err1,users){
                 next(null,{
                     channels:users
                 });
             })
             userDao.joinChanel(oid,msg.pid);
-            userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
+            userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err2,res){
 
             });
 
@@ -125,7 +125,7 @@ handler.listenOrg = function(msg, session, next) {
  */
 handler.createChannel = function(msg, session, next) {
     var channelService = this.app.get('channelService');
-    userDao.createOrg(msg.users,msg.channel,msg.name,msg.author,function(err, org, users){
+    userDao.createOrg(msg.users,msg.channel,msg.name,msg.author,msg,function(err, route, org, users){
         if(err){
             next(null,{
                 code:500
@@ -133,17 +133,27 @@ handler.createChannel = function(msg, session, next) {
             return;
         }
         if(!err&&org){
-            userDao.findOnlineByUsername(users,function(err2,onlines){
-                var param = {
-                    route: 'createChannel',
-                    group:org
-                };
-                channelService.pushMessageByUids(param, onlines);
-            })
+            if(msg['v']==undefined){
+                userDao.findOnlineByUsername(users,function(err2,onlines){
+                    var param = {
+                        route: route,
+                        group:org
+                    };
+                    channelService.pushMessageByUids(param, onlines);
+                });
+            }
+
+            next(null,{
+                code:200,
+                needupdate:false
+            });
+        }else{
+            next(null,{
+                code:200,
+                needupdate:true
+            });
         }
-        next(null,{
-            code:200
-        });
+
     });
 };
 

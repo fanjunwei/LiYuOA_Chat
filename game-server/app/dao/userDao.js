@@ -47,7 +47,7 @@ userDao.offlineUser = function(uid,cb){
 
 userDao.updateChanelByUser = function(channel,pid){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-            db.collection("Channel").update({_id:channel,"users.pid":pid},{$set:{"users.$.timeline":parseInt(Date.now()/1000,10)}},{safe:true},function(err,num){
+            db.collection("Channel").update({_id:channel,"members.pid":pid},{$set:{"members.$.timeline":parseInt(Date.now()/1000,10)}},{safe:true},function(err,num){
                 if(num==0){
                     console.error("remove _id:"+num);
                 }
@@ -60,9 +60,9 @@ userDao.updateChanelByUser = function(channel,pid){
 
 userDao.joinChanel = function(channel,pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").update({_id:channel},{$push:{"users":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,num){
+        db.collection("Channel").update({_id:channel},{$push:{"members":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,num){
             if(num==0){
-                db.collection("Channel").insert({_id:channel,users:[{pid:pid,timeline:parseInt(Date.now()/1000,10)}]},{safe:true},function(err2,res2){
+                db.collection("Channel").insert({_id:channel,members:[{pid:pid,timeline:parseInt(Date.now()/1000,10)}]},{safe:true},function(err2,res2){
                     if(err2){
                         console.error(res2);
                     }
@@ -81,7 +81,7 @@ userDao.joinChanel = function(channel,pid,cb){
 
 userDao.quiteChanel = function(channel,pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp) {
-        db.collection("Channel").update({_id: channel, "users.pid": pid}, {$pull: {"users": {pid: pid}}}, {safe: true}, function (err, num) {
+        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$pull: {"members": {pid: pid}}}, {safe: true}, function (err, num) {
             if (num == 0) {
                 console.error("remove _id:" + num);
             }
@@ -93,7 +93,7 @@ userDao.quiteChanel = function(channel,pid,cb){
 
 userDao.addListenOrg = function(pid,channels,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").find({_id:{$regex:/^d.*/i},"users.pid":pid}).toArray(function(err,res){
+        db.collection("Channel").find({_id:{$regex:/^d.*/i},"members.pid":pid}).toArray(function(err,res){
             cleanUp();
             utils.invokeCallback(cb, err,null);
             if(!err&&channels.length!=res.length){
@@ -124,8 +124,8 @@ userDao.addListenOrg = function(pid,channels,cb){
                     }
                     if(fl){
 //                        console.error(res[k]._id);
-                        for(var m=0;m<res[k].users.length;m++){
-                            if(res[k].users[m].pid==pid){
+                        for(var m=0;m<res[k].members.length;m++){
+                            if(res[k].members[m].pid==pid){
                                 userDao.quiteChanel(res[k]._id,pid);
                             }
 
@@ -153,23 +153,38 @@ userDao.addListenOrg = function(pid,channels,cb){
     });
 }
 
-userDao.createOrg = function(pids,channel,name,author,cb){
+userDao.createOrg = function(pids,channel,name,author,msg,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org){
+            var users=[];
+            var d=parseInt(Date.now()/1000,10);
+            for(var i=0;i<pids.length;i++){
+                users.push({pid:pids[i],timeline:d})
+            }
+
+            var c_org = {members:users,name:name,_id:channel,author:author};
+            if(msg['v']!=undefined){
+                c_org['v']=msg['v'];
+            }
             if(!org){
-                var users=[];
-                var d=parseInt(Date.now()/1000,10);
-                for(var i=0;i<pids.length;i++){
-                    users.push({pid:pids[i],timeline:d})
-                }
-                org = {members:users,name:name,channel:channel,author:author};
-                db.collection("Channel").insert({users:users,name:name,_id:channel,author:author},{safe:true},function(err,res){
+
+                db.collection("Channel").insert(c_org,{safe:true},function(err1,res){
                     cleanUp();
-                    utils.invokeCallback(cb, err,org,users);
+                    utils.invokeCallback(cb, err1,'createChannel',c_org,users);
                 })
             }else{
-                cleanUp();
-                utils.invokeCallback(cb, err,null);
+                if(msg['v']!=undefined&&org['v']<c_org['v']){
+                    delete c_org['_id'];
+                    db.collection("Channel").update({_id:channel},{$set:c_org},{safe:true},function(err2,res){
+                        cleanUp();
+                        c_org['_id'] = channel;
+                        utils.invokeCallback(cb, err2,'updateChannel',c_org,users);
+                    })
+                }else{
+                    cleanUp();
+                    utils.invokeCallback(cb, err,null,null);
+                }
+
             }
         })
     });
@@ -178,9 +193,9 @@ userDao.createOrg = function(pids,channel,name,author,cb){
 
 userDao.addPidToOrg = function(pid,channel,name,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").findOne({_id:channel,"users.pid":pid},function(err,org){
+        db.collection("Channel").findOne({_id:channel,"members.pid":pid},function(err,org){
             if(!org){
-                db.collection("Channel").update({_id:channel},{$push:{"users":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,res){
+                db.collection("Channel").update({_id:channel},{$push:{"members":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,res){
                     cleanUp();
                 })
             }else{
@@ -207,7 +222,7 @@ userDao.addPidToOrg = function(pid,channel,name,cb){
 
 //{
 //    _id:"d3",
-//    users:[
+//    members:[
 //    {username:1,timeline:timeline},
 //    {username:2,timeline:timeline},
 //            ]
@@ -215,13 +230,13 @@ userDao.addPidToOrg = function(pid,channel,name,cb){
 
 userDao.findChannelByUser = function(pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").find({"users.pid":pid}).toArray(function(err,channels){
+        db.collection("Channel").find({"members.pid":pid}).toArray(function(err,channels){
             if(channels){
                 var usernames = [];
                 for(var i=0;i<channels.length;i++){
-                    for(var j=0;j<channels[i].users.length;j++){
-                        if(channels[i].users[j].pid==pid){
-                            usernames.push({channel:channels[i]._id,timeline:channels[i].users[j].timeline,name:channels[i].name,members:channels[i].users,author:channels[i].author});
+                    for(var j=0;j<channels[i].members.length;j++){
+                        if(channels[i].members[j].pid==pid){
+                            usernames.push({channel:channels[i]._id,timeline:channels[i].members[j].timeline,name:channels[i].name,members:channels[i].members,author:channels[i].author});
                             break;
                         }
                     }
@@ -257,7 +272,7 @@ userDao.findOrCreateUsersByOrg = function(channel,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org) {
             if (!org) {
-                db.collection("Channel").insert({_id: channel, users: []}, {safe: true},function(err,res){
+                db.collection("Channel").insert({_id: channel, members: []}, {safe: true},function(err,res){
                     cleanUp();
                     utils.invokeCallback(cb, err, []);
                     return;
@@ -265,11 +280,11 @@ userDao.findOrCreateUsersByOrg = function(channel,cb){
 
             }else{
                 cleanUp();
-                if(org&&org.users.length==0){
+                if(org&&org.members.length==0){
                     utils.invokeCallback(cb, err,[]);
                     return;
                 }
-                userDao.findOnlineByUsername(org.users,function(err,onlines){
+                userDao.findOnlineByUsername(org.members,function(err,onlines){
                     utils.invokeCallback(cb, err, onlines);
                 })
             }
@@ -281,11 +296,11 @@ userDao.findUsersByOrg = function(channel,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org){
             cleanUp();
-            if(!org||org.users.length==0){
+            if(!org||org.members.length==0){
                 utils.invokeCallback(cb, err,[]);
                 return;
             }
-            userDao.findOnlineByUsername(org.users,function(err,onlines){
+            userDao.findOnlineByUsername(org.members,function(err,onlines){
                 utils.invokeCallback(cb, err, onlines);
             })
         })
@@ -333,7 +348,7 @@ userDao.insertChat = function(chat,cb){
 
 userDao.updateTimeline = function(channel,pid){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").update({_id: channel, "users.pid": pid}, {$set: {"users.$.timeline": parseInt(Date.now()/1000,10)}}, function (err, num) {
+        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$set: {"members.$.timeline": parseInt(Date.now()/1000,10)}}, function (err, num) {
             if (num == 0) {
                 console.error("remove _id:" + num);
             }
@@ -375,8 +390,8 @@ userDao.printChannelUsers = function(channel){
     pomelo.app.get("dbclient").do(function(db,cleanUp) {
         db.collection("Channel").findOne({_id: channel}, function (err, org) {
             console.error("channel:"+org._id);
-            for(var i=0;i<org.users.length;i++){
-                console.error("users:"+org.users[i].pid);
+            for(var i=0;i<org.members.length;i++){
+                console.error("members:"+org.members[i].pid);
             }
             cleanUp();
         });
