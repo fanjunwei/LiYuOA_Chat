@@ -348,7 +348,7 @@ userDao.insertChat = function(chat,cb){
 
 userDao.updateTimeline = function(channel,pid){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$set: {"members.$.timeline": parseInt(Date.now()/1000,10)}}, function (err, num) {
+        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$set: {"members.$.timeline": parseInt(Date.now()/1000,10)+1}}, function (err, num) {
             if (num == 0) {
                 console.error("remove _id:" + num);
             }

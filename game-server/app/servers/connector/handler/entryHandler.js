@@ -133,16 +133,13 @@ handler.createChannel = function(msg, session, next) {
             return;
         }
         if(!err&&org){
-            if(msg['v']==undefined){
-                userDao.findOnlineByUsername(users,function(err2,onlines){
-                    var param = {
-                        route: route,
-                        group:org
-                    };
-                    channelService.pushMessageByUids(param, onlines);
-                });
-            }
-
+            userDao.findOnlineByUsername(users,function(err2,onlines){
+                var param = {
+                    route: route,
+                    group:org
+                };
+                channelService.pushMessageByUids(param, onlines);
+            });
             next(null,{
                 code:200,
                 needupdate:false
@@ -289,6 +286,7 @@ handler.send = function(msg, session, next) {
 //    console.error(msg);
 //    channel = channelService.getChannel(oid, false);
     userDao.insertChat(msg,null);
+    userDao.updateTimeline(channel,msg.f);
 //    if(to){
 //        userDao.findUsersByUsername([to],function(err,users){
 //            if(err){
