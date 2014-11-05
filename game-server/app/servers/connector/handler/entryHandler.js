@@ -46,34 +46,28 @@ handler.enter = function(msg, session, next) {
             channelService.pushMessageByUids(param, users);
             sessionService.kick(uid);
             //
-            session.bind(uid);
-            session.on('closed', onUserLeave.bind(null, self.app));
-            userDao.findChannelByUser(msg.pid,function(err1,users){
-                next(null,{
-                    channels:users
-                });
-            })
-            userDao.joinChanel(oid,msg.pid);
-            userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err2,res){
-
-            });
+            login(session,self.app,oid,uid,msg,next);
 
         })
     }else{
-        session.bind(uid);
-        session.on('closed', onUserLeave.bind(null, self.app));
-        userDao.findChannelByUser(msg.pid,function(err,users){
-            next(null,{
-                channels:users
-            });
-        })
-        userDao.joinChanel(oid,msg.pid);
-        userDao.onlineUser(msg.pid,uid,self.app.get("serverId"),function(err,res){
-
-        });
+        login(session,self.app,oid,uid,msg,next);
 
     }
 };
+
+login = function(session,app,oid,uid,msg,next){
+    session.bind(uid);
+    session.on('closed', onUserLeave.bind(null, app));
+    userDao.findChatChannelByUser(msg.pid,function(err,channels){
+        next(null,{
+            channels:channels
+        });
+    })
+    userDao.joinChanel(oid,msg.pid);
+    userDao.onlineUser(msg.pid,uid,app.get("serverId"),function(err,res){
+
+    });
+}
 
 
 /**

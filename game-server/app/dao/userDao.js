@@ -60,7 +60,7 @@ userDao.updateChanelByUser = function(channel,pid){
 
 userDao.joinChanel = function(channel,pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").update({_id:channel},{$push:{"members":{pid:pid,timeline:parseInt(Date.now()/1000,10)}}},{safe:true},function(err,num){
+        db.collection("Channel").update({_id:channel},{$push:{"members":{pid:pid,timeline:parseInt(Date.now()/1000,10)}},$inc:{members_size:1}},{safe:true},function(err,num){
             if(num==0){
                 db.collection("Channel").insert({_id:channel,members:[{pid:pid,timeline:parseInt(Date.now()/1000,10)}]},{safe:true},function(err2,res2){
                     if(err2){
@@ -81,7 +81,7 @@ userDao.joinChanel = function(channel,pid,cb){
 
 userDao.quiteChanel = function(channel,pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp) {
-        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$pull: {"members": {pid: pid}}}, {safe: true}, function (err, num) {
+        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$pull: {"members": {pid: pid}},$inc:{members_size:-1}}, {safe: true}, function (err, num) {
             if (num == 0) {
                 console.error("remove _id:" + num);
             }
@@ -159,10 +159,10 @@ userDao.createOrg = function(pids,channel,name,author,msg,cb){
             var users=[];
             var d=parseInt(Date.now()/1000,10);
             for(var i=0;i<pids.length;i++){
-                users.push({pid:pids[i],timeline:d})
+                users.push({pid:pids[i],timeline:d,used:false})
             }
 
-            var c_org = {members:users,name:name,_id:channel,author:author};
+            var c_org = {members:users,name:name,_id:channel,author:author,members_size:users.length};
             if(msg['v']!=undefined){
                 c_org['v']=msg['v'];
             }
@@ -228,9 +228,31 @@ userDao.addPidToOrg = function(pid,channel,name,cb){
 //            ]
 //}
 
-userDao.findChannelByUser = function(pid,cb){
+userDao.findChatChannelByUser = function(pid,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").find({"members.pid":pid}).toArray(function(err,channels){
+        db.collection("Channel").find({"members.pid":pid, "members.used":true}).toArray(function(err,channels){
+            if(channels){
+                var usernames = [];
+                for(var i=0;i<channels.length;i++){
+                    for(var j=0;j<channels[i].members.length;j++){
+                        if(channels[i].members[j].pid==pid){
+                            usernames.push({channel:channels[i]._id,timeline:channels[i].members[j].timeline,name:channels[i].name,members:channels[i].members,author:channels[i].author});
+                            break;
+                        }
+                    }
+                }
+            }
+            cleanUp();
+            utils.invokeCallback(cb, err,usernames);
+        })
+    });
+}
+
+
+userDao.findUnreadChannelByUser = function(pid,cb){
+    pomelo.app.get("dbclient").do(function(db,cleanUp){
+        // 增加 where 条件，筛选出 lastUpdateTime 大于 timeline 的数据，（最终试着将 两个查询合并成一个查询）
+        db.collection("Channel").find({members_size:{ $gt: 1 } ,"members.pid":pid, "members.used":false,lastUpdateTime:{ $exists : true }}).toArray(function(err,channels){
             if(channels){
                 var usernames = [];
                 for(var i=0;i<channels.length;i++){
@@ -348,7 +370,8 @@ userDao.insertChat = function(chat,cb){
 
 userDao.updateTimeline = function(channel,pid){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$set: {"members.$.timeline": parseInt(Date.now()/1000,10)+1}}, function (err, num) {
+        var timeline=parseInt(Date.now()/1000,10)+1;
+        db.collection("Channel").update({_id: channel, "members.pid": pid}, {$set: {"members.$.timeline": timeline,"members.$.used":true,lastUpdateTime:timeline}}, function (err, num) {
             if (num == 0) {
                 console.error("remove _id:" + num);
             }
