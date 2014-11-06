@@ -209,6 +209,22 @@ handler.joinChannel = function(msg, session, next) {
     });
 };
 
+
+
+handler.queryChannelInfo = function(msg, session, next) {
+    userDao.queryChannelByID(msg.channel,function(err, org){
+        if(err){
+            next(null,{
+                code:500
+            })
+            return;
+        }
+        next(null,{
+            code:200,
+            channel:org
+        });
+    });
+};
 /**
  * User log out handler
  *
@@ -260,6 +276,23 @@ handler.updatetimeline = function(msg, session, next){
     next(null,{
         code:200
     });
+}
+
+
+handler.unsubscribeChannel = function(msg, session, next){
+
+    userDao.unsubscribeChannel(msg.channel,msg.pid,function(err){
+        if(err){
+            next(null,{
+                code:500
+            });
+        }else{
+            next(null,{
+                code:200
+            });
+        }
+    });
+
 }
 
 handler.send = function(msg, session, next) {
