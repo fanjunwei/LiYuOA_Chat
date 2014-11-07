@@ -109,6 +109,17 @@ handler.listenOrg = function(msg, session, next) {
 };
 
 
+function unique(arr) {
+    var result = [], hash = {};
+    for (var i = 0, elem; (elem = arr[i]) != null; i++) {
+        if (!hash[elem]) {
+            result.push(elem);
+            hash[elem] = true;
+        }
+    }
+    return result;
+}
+
 /**
  * New client entry chat server.
  *
@@ -118,8 +129,9 @@ handler.listenOrg = function(msg, session, next) {
  * @return {Void}
  */
 handler.createChannel = function(msg, session, next) {
+    var msgusers = unique(msg.users);
     var channelService = this.app.get('channelService');
-    userDao.createOrg(msg.users,msg.channel,msg.name,msg.author,msg,function(err, route, org, users){
+    userDao.createOrg(msgusers,msg.channel,msg.name,msg.author,msg,function(err, route, org, users){
         if(err){
             next(null,{
                 code:500
