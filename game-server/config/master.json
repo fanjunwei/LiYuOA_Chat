@@ -1,7 +1,7 @@
 {
     "development":{
         "id":"master-server-1",
-        "host":"192.168.101.18",
+        "host":"mogu4.zxxsbook.com",
         "port":3005,
         "queryPort":3015,
         "wsPort":2337
