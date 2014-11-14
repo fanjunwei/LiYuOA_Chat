@@ -16,6 +16,9 @@ userDao.onlineUser = function(pid,uid,sid,cb){
 //        db.collection("Channel").remove(function(){
 //
 //        });
+//        db.collection("Chat").remove(function(){
+//
+//        });
         db.collection("Users").update({_id:uid}, {$set:{sid:sid,online:true}}, {safe:true},function(err,res){
             if(res==0){
                 db.collection("Users").insert({pid:pid,_id:uid,sid:sid,online:true},{safe:true},function(err,res){
@@ -213,7 +216,7 @@ userDao.createOrg = function(pids,channel,name,author,msg,cb){
             var users=[];
             var d=parseInt(Date.now()/1000,10);
             for(var i=0;i<pids.length;i++){
-                users.push({pid:pids[i],timeline:d,used:false})
+                users.push({pid:parseInt(pids[i],10),timeline:d,used:false})
             }
 
             var c_org = {members:users,name:name,_id:channel,author:author,members_size:users.length};
@@ -336,7 +339,7 @@ userDao.findOnlineByUsername = function(users,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp) {
         var usernames=[];
         for(var i=0;i<users.length;i++){
-            usernames.push(users[i].pid);
+            usernames.push(parseInt(users[i].pid,10));
         }
         db.collection("Users").find({pid: {$in: usernames}, online: true}, {_id: 1, sid: 1}).toArray(function (err, users) {
             var onlines = [];

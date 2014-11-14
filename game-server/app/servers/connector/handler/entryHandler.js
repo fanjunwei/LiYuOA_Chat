@@ -198,7 +198,7 @@ handler.quiteChannel = function(msg, session, next) {
 
 handler.joinChannel = function(msg, session, next) {
     var channelService = this.app.get('channelService');
-    userDao.joinChanel(msg.channel,msg.pid,function(err, res){
+    userDao.joinChanel(msg.channel,parseInt(msg.pid,10),function(err, res){
         if(err){
             next(null,{
                 code:500
@@ -209,7 +209,7 @@ handler.joinChannel = function(msg, session, next) {
             userDao.findUsersByOrg(msg.channel,function(err3,onlines){
                 var param2 = {
                     route: 'joinChannel',
-                    pid:msg.pid,
+                    pid:parseInt(msg.pid,10),
                     channel:msg.channel
                 };
                 channelService.pushMessageByUids(param2, onlines);
