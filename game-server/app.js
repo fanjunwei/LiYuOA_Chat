@@ -28,7 +28,7 @@ app.configure('production|development','connector', function() {
         useDict : true,
         useProtobuf : true
     });
-
+    app.load(crossdomain, {interval: 5000});
     app.set('errorHandler', function (err, msg, resp, session, next) {
         console.log(err, msg, resp, session);
         next();
