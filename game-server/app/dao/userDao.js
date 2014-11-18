@@ -150,48 +150,62 @@ userDao.quiteChanel = function(channel,pid,cb){
 
 userDao.addListenOrg = function(pid,channels,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
-        db.collection("Channel").find({_id:{$regex:/^d.*/i},"members.pid":pid}).toArray(function(err,res){
+        db.collection("Channel").find({_id:{$in:channels}}).toArray(function(err,res){
             cleanUp();
             utils.invokeCallback(cb, err,null);
-            if(!err&&channels.length!=res.length){
+            if(!err){
                 var f=true;
-                for(var i=0;i<channels.length;i++){
-                    f=true;
-                    for(var j=0;j<res.length;j++){
-                        if(res[j]._id==channels[i]){
-                            f=false;
-                            break;
+                for(var j=0;j<res.length;j++){
+                    f=false;
+                    for(var m=0;m<res[j].members.length;m++){
+                        if(pid==res[j].members[m].pid){
+                            f=true;
                         }
                     }
-                    if(f){
-                        userDao.joinChanel(channels[i],pid);
+                    if(!f){
+                        userDao.joinChanel(res[j]._id,pid);
                     }
                 }
-                var fl=true;
-                for(var k=0;k<res.length;k++) {
-                    if(res[k]._id.substr(0,1)!="d"){
-                        continue;
-                    }
-                    fl = true;
-                    for (var l = 0; l < channels.length; l++) {
-                        if (res[k]._id == channels[l]) {
-                            fl = false;
-                            break;
-                        }
-                    }
-                    if(fl){
-//                        console.error(res[k]._id);
-                        for(var m=0;m<res[k].members.length;m++){
-                            if(res[k].members[m].pid==pid){
-                                userDao.quiteChanel(res[k]._id,pid);
-                            }
-
-                        }
-
-                    }
-                }
-
             }
+//            if(!err){
+//                var f=true;
+//                for(var i=0;i<channels.length;i++){
+//                    f=true;
+//                    for(var j=0;j<res.length;j++){
+//                        if(res[j]._id==channels[i]){
+//                            f=false;
+//                            break;
+//                        }
+//                    }
+//                    if(f){
+//                        userDao.joinChanel(channels[i],pid);
+//                    }
+//                }
+//                var fl=true;
+//                for(var k=0;k<res.length;k++) {
+//                    if(res[k]._id.substr(0,1)!="d"){
+//                        continue;
+//                    }
+//                    fl = true;
+//                    for (var l = 0; l < channels.length; l++) {
+//                        if (res[k]._id == channels[l]) {
+//                            fl = false;
+//                            break;
+//                        }
+//                    }
+//                    if(fl){
+////                        console.error(res[k]._id);
+//                        for(var m=0;m<res[k].members.length;m++){
+//                            if(res[k].members[m].pid==pid){
+//                                userDao.quiteChanel(res[k]._id,pid);
+//                            }
+//
+//                        }
+//
+//                    }
+//                }
+//
+//            }
 
 
         })
@@ -206,7 +220,7 @@ userDao.addListenOrg = function(pid,channels,cb){
 //            }
 //            utils.invokeCallback(cb, err);
 //        })
-        cleanUp();
+//        cleanUp();
     });
 }
 
