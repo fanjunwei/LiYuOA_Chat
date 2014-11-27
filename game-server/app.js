@@ -25,6 +25,8 @@ app.configure('production|development','connector', function() {
     app.filter(pomelo.timeout());
     app.set('connectorConfig', {
         connector : pomelo.connectors.hybridconnector,
+        heartbeat : 10,
+        disconnectOnTimeout : true,
         useDict : true,
         useProtobuf : true
     });
