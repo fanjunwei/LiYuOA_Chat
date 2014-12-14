@@ -1,23 +1,21 @@
 {
     "development":{
         "connector":[
-            {"id":"connector-server-1", "host":"mogu4.zxxsbook.com", "port":4050, "clientPort": 3050, "frontend": true},
-            {"id":"connector-server-2", "host":"mogu4.zxxsbook.com", "port":4051, "clientPort": 3051, "frontend": true},
-            {"id":"connector-server-3", "host":"mogu4.zxxsbook.com", "port":4052, "clientPort": 3052, "frontend": true}
+            {"id":"connector-server-3", "host":"54.64.30.116", "port":4052, "clientPort": 3052, "frontend": true}
         ],
         "gate":[
-            {"id": "gate-server-1", "host": "mogu4.zxxsbook.com", "clientPort": 3014, "frontend": true}
+            {"id": "gate-server-1", "host": "54.64.30.116", "clientPort": 3014, "frontend": true}
         ]
     },
     "production":{
            "connector":[
-             {"id":"connector-server-1", "host":"mogu4.zxxsbook.com", "port":4050, "clientPort": 3050, "frontend": true},
-             {"id":"connector-server-2", "host":"mogu4.zxxsbook.com", "port":4051, "clientPort": 3051, "frontend": true},
-             {"id":"connector-server-3", "host":"mogu4.zxxsbook.com", "port":4052, "clientPort": 3052, "frontend": true}
+             {"id":"connector-server-1", "host":"54.64.30.116", "port":4050, "clientPort": 3050, "frontend": true},
+             {"id":"connector-server-2", "host":"54.64.30.116", "port":4051, "clientPort": 3051, "frontend": true},
+             {"id":"connector-server-3", "host":"54.64.30.116", "port":4052, "clientPort": 3052, "frontend": true}
          ],
 
         "gate":[
-           {"id": "gate-server-1", "host": "mogu4.zxxsbook.com", "clientPort": 3014, "frontend": true}
+           {"id": "gate-server-1", "host": "54.64.30.116", "clientPort": 3014, "frontend": true}
         ]
   }
 }
