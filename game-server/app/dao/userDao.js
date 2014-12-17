@@ -369,6 +369,16 @@ userDao.findOnlineByUsername = function(users,cb){
     });
 }
 
+
+userDao.findOnlineByPids = function(pids,cb){
+    pomelo.app.get("dbclient").do(function(db,cleanUp) {
+        db.collection("Users").find({pid: {$in: pids}, online: true}, {_id: 1, sid: 1, pid:1}).toArray(function (err, users) {
+            utils.invokeCallback(cb, err, users);
+            cleanUp();
+        });
+    });
+}
+
 userDao.findOrCreateUsersByOrg = function(channel,cb){
     pomelo.app.get("dbclient").do(function(db,cleanUp){
         db.collection("Channel").findOne({_id:channel},function(err,org) {

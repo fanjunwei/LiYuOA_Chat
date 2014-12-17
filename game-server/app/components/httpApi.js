@@ -48,63 +48,74 @@ HttpApi.prototype.start = function(cb) {
     httpapi.post('/:url', function(req, res){
         var url = req.params.url;
 
-        console.error("http api"+url+":"+JSON.stringify(req.body));
-        var _id=parseInt(Date.now()/1000,10)+req.body.id;
-        var msg={_id:_id, channel:req.body.channel,te:req.body.message,d:req.body.d,type:url,do:req.body.do};
-        if(req.body.pid){
-            var pids=req.body.pid.split(',');
-            var pidarr=[];
-            for(var o=0;o<pids.length;o++){
-                pidarr.push(parseInt(pids[o]));
+//        console.error("http api"+url+":"+JSON.stringify(req.body));
+        var channelService = self.app.get('channelService');
+        if(req.body.channel){
+            var _id=parseInt(Date.now()/1000,10)+req.body.id;
+            var msg={_id:_id, channel:req.body.channel,te:req.body.message,d:req.body.d,type:url,do:req.body.do};
+            if(req.body.pid){
+                var pids=req.body.pid.split(',');
+                var pidarr=[];
+                for(var o=0;o<pids.length;o++){
+                    pidarr.push(parseInt(pids[o]));
+                }
+                msg['to']=pidarr;
             }
-            msg['to']=pidarr;
+
+            var param = {
+                route: 'sys',
+                msg: msg
+            };
+            userDao.insertChat(msg,null);
+            userDao.findOrCreateUsersByOrg(msg.channel,function(err,users){
+                if(err){
+                    res.send("false");
+                    return;
+                }
+                if(msg.channel&&msg.to){
+                    if(msg.do=='join'){
+                        for(var k=0;k<msg.to.length;k++){
+                            userDao.joinChanel(msg.channel,msg.to[k]);
+                        }
+                    }
+                    if(msg.do=='remove'){
+                        for(var k=0;k<msg.to.length;k++){
+                            userDao.quiteChanel(msg.channel,msg.to[k],function(err0,num0){
+                            });
+                        }
+                    }
+//                userDao.printChannelUsers(msg.channel);
+                }
+                channelService.pushMessageByUids(param, users);
+                if(msg.to){
+                    userDao.findUsersByUsername(msg.to,function(err,users){
+                        if(err){
+                            res.send("false");
+                            return;
+                        }
+                        channelService.pushMessageByUids(param, users);
+                        res.send("true");
+                    });
+                }else{
+                    res.send("true");
+                }
+            });
+        }
+        if(req.body.notifydict){
+            // 对个人发出的 notify 无需保存的
+            userDao.findOnlineByPids(req.body.notifydict.pids,function(err,users){
+                if(err){
+                    res.send("false");
+                    return;
+                }
+                for (var i = 0; i < users.length; i++) {
+                    channelService.pushMessageByUids({ route: 'sys', msg: req.body.notifydict.notifys[users[i].pid]}, [{uid: users[i]._id, sid: users[i].sid}]);
+                }
+
+                res.send("true");
+            });
         }
 
-
-        var channelService = self.app.get('channelService');
-        var param = {
-            route: 'sys',
-            msg: msg
-        };
-        userDao.insertChat(msg,null);
-
-        userDao.findOrCreateUsersByOrg(msg.channel,function(err,users){
-            if(err){
-                res.send("false");
-                return;
-            }
-            if(msg.channel&&msg.to){
-                if(msg.do=='join'){
-                    for(var k=0;k<msg.to.length;k++){
-                        userDao.joinChanel(msg.channel,msg.to[k]);
-                    }
-                }
-                if(msg.do=='remove'){
-                    for(var k=0;k<msg.to.length;k++){
-                        userDao.quiteChanel(msg.channel,msg.to[k],function(err0,num0){
-
-                        });
-                    }
-
-                }
-//                userDao.printChannelUsers(msg.channel);
-            }
-
-            channelService.pushMessageByUids(param, users);
-            if(msg.to){
-                userDao.findUsersByUsername(msg.to,function(err,users){
-                    if(err){
-                        res.send("false");
-                        return;
-                    }
-                    channelService.pushMessageByUids(param, users);
-                    res.send("true");
-                });
-            }else{
-                res.send("true");
-            }
-
-        });
 
 //
 //        self.app.rpc.chat.chatRemote.sendSys(oid,oid,{"o":oid,"t":person,"msg":message,"type":url},function(error){
